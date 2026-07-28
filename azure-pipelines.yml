@@ -1,0 +1,68 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+parameters:
+  - name: testEnvironment
+    displayName: Test environment
+    type: string
+    default: qa
+    values:
+      - qa
+      - prod
+      - production  
+
+variables:
+  CI: "true"
+  BASE_URL: "https://your-test-environment.example.com"
+
+steps:
+  - checkout: self
+
+  - task: NodeTool@0
+    displayName: Install Node.js
+    inputs:
+      versionSpec: "22.x"
+
+  - script: npm ci
+    displayName: Install npm dependencies
+
+  - script: npx playwright install --with-deps
+    displayName: Install Playwright browsers
+
+  - script: npx playwright test --grep "@smoke"
+    displayName: Run smoke tests
+    env:
+      TEST_ENV: ${{ parameters.testEnvironment }}
+
+  - task: PublishTestResults@2
+    displayName: Publish test results
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: "test-results/results.xml"
+      failTaskOnFailedTests: false
+      testRunTitle: "Playwright tests"
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish Playwright HTML report
+    condition: succeededOrFailed()
+    inputs:
+      targetPath: "playwright-report"
+      artifact: "playwright-report"
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish failure artifacts
+    condition: failed()
+    inputs:
+      targetPath: "test-results"
+      artifact: "playwright-test-results"
