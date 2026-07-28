@@ -21,10 +21,6 @@ parameters:
       - prod
       - production  
 
-variables:
-  CI: "true"
-  BASE_URL: "https://your-test-environment.example.com"
-
 steps:
   - checkout: self
 
